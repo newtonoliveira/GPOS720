@@ -8,8 +8,8 @@ Exemplo de uso da Clisitef da FiServ no equipamento GPOS720 da fabricante Gertec
 
 Ferramenta | Logo
 ----------- | -----------
-Delphi 11.3 Alexandria | <img src="imagens/embt_primary_logo_black_2023.webp" alt="Delphi" title="Delphi" width="45" />
-FiServ Sitef           | <img src="imagens/softwareexpressfromfiserv-logo-colr.png" alt="Software Express" title="Software Express" width="45" />
+Delphi 11.3 Alexandria | <img src="imagens/embt_primary_logo_black_2023.webp" alt="Delphi" title="Delphi" width="145" />
+FiServ Sitef           | <img src="imagens/softwareexpressfromfiserv-logo-colr.png" alt="Software Express" title="Software Express" width="145" />
 
 ------------------------------------------------------------------
 
