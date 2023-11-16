@@ -1,0 +1,473 @@
+unit nghc.funcoescomuns;
+
+interface
+
+uses
+  System.Classes,
+  System.SysUtils,
+  System.MaskUtils,
+
+  Androidapi.Helpers,
+  Androidapi.JNI.Os,
+  Androidapi.JNI.app,
+  Androidapi.JNI.JavaTypes,
+  Androidapi.JNI.GraphicsContentViewText,
+  Androidapi.JNI.Telephony,
+  Androidapi.JNI.Provider,
+  Androidapi.JNIBridge,
+  Androidapi.JNI.Media,
+  Posix.Unistd,
+  FMX.Objects,
+  FMX.Layouts,
+  FMX.Ani,
+  FMX.StdCtrls,
+  System.IOUtils,
+  System.Net.HttpClient,
+  Posix.Stdlib,
+  Json,
+  Rest.Json;
+
+type
+  TPhoneInfo = (piICCID, piPhoneNumber, piIMEI, piNetworkOperator, piDeviceID, piCellLocation, piSimOperator, piSimSerialNumber);
+
+  TFuncoesComuns = class
+  public
+    class procedure AndroidBeep(ADuration: Integer);
+
+    class function FormataNome(sNome: String): string; static;
+    class function FormatJson(AJson: string): string;
+    class function FormatEditMask(aMask, aValue: String): String; static;
+    class procedure StartButtonAnimation(rectButton: TRectangle; lbl: TLabel; arc: TArc; animation: TFloatAnimation);
+    class procedure StopButtonAnimation(rectButton: TRectangle; lbl: TLabel; arc: TArc; animation: TFloatAnimation);
+
+    class function SalvaLOG(ANomeArquivo, AConteudo: string): Integer;
+
+    class function StrZero(ANumero, AComp: Integer; ACaracterPreencimento: char = '0'): String;
+    class function SalvaArquivo(ANomeArquivo, AConteudo: string; AExcluiArquivo: boolean = true): boolean;
+    class function DeletaArquivo(ANomeArquivo: string): boolean;
+    class function ExisteArquivo(ANomeArquivo: string): boolean;
+    class function RenomeiaArquivo(AArquivoOrigem, AArquivoDestino: string): boolean;
+    class function TamanhoDoArquivo(ANomeArquivo: string): Integer;
+    class function NomeArquivo(ANomeArquivo: string): boolean;
+    class function CarregaArquivo(ANomeArquivo: string): string;
+    class function FormataValor(AValor: string; AIncluiMoeda: boolean = true): string;
+    class function NomeRede(ACodigoRede: string): string;
+    class function versaoapp(): string;
+    class function NumeroVersaoAndroid(): Integer;
+    class function ModeloAndroid(): string;
+    class function ArquiteturaAndroid(): string;
+    class function VersaoAndroid(var AModelName: string; var AArchitecture: string; var AOSVersion: string): boolean;
+    class function SerieDispositivo(ARetornaFormatado: boolean = false): string;
+
+    class function validarenderecoemail(AEnderecoEmail: string): boolean;
+    class function CheckConexaoComInternet(): boolean;
+    class function iif(condicao: boolean; condicao_ok: variant; condicao_nok: variant): variant;
+
+    class function formataDocumento(ADocumento: string): string;
+    class function formatacpf(ADocumento: string): string;
+    class function formatacnpj(ADocumento: string): string;
+    class function GetPhoneICCID(): string;
+  end;
+
+implementation
+
+{ TFuncoesComuns }
+class function TFuncoesComuns.FormataNome(sNome: String): string;
+const
+  excecao: array [0 .. 5] of string = ('da', 'de', 'do', 'das', 'dos', 'e');
+var
+  tamanho, j: Integer;
+  i: byte;
+begin
+  Result := AnsiLowerCase(sNome);
+  tamanho := Length(Result);
+
+  for j := 1 to tamanho do
+    // Se é a primeira letra ou se o caracter anterior é um espaço
+    if (j = 1) or ((j > 1) and (Result[j - 1] = Chr(32))) then
+      Result[j] := AnsiUpperCase(Result[j])[1];
+  for i := 0 to Length(excecao) - 1 do
+    Result := StringReplace(Result, excecao[i], excecao[i], [rfReplaceAll, rfIgnoreCase]);
+end;
+
+class function TFuncoesComuns.StrZero(ANumero, AComp: Integer; ACaracterPreencimento: char = '0'): String;
+begin
+  Result := StringOfChar(ACaracterPreencimento, AComp - Length(IntToStr(ANumero))) + IntToStr(ANumero);
+end;
+
+class function TFuncoesComuns.validarenderecoemail(AEnderecoEmail: string): boolean;
+begin
+  AEnderecoEmail := Trim(UpperCase(AEnderecoEmail));
+  if Pos('@', AEnderecoEmail) > 1 then
+  begin
+    Delete(AEnderecoEmail, 1, Pos('@', AEnderecoEmail));
+    Result := (Length(AEnderecoEmail) > 0) and (Pos('.', AEnderecoEmail) > 2);
+  end
+  else
+    Result := false;
+end;
+
+class function TFuncoesComuns.ArquiteturaAndroid: string;
+begin
+  case TOSVersion.Architecture of
+    arIntelX86:
+      Result := 'IntelX86';
+    arIntelX64:
+      Result := 'IntelX64';
+    arARM32:
+      Result := 'ARM32';
+    arARM64:
+      Result := 'ARM64';
+  else
+    Result := string.Empty;
+  end;
+end;
+
+class function TFuncoesComuns.ModeloAndroid(): string;
+begin
+  Result := JStringToString(TJBuild.JavaClass.MODEL);
+end;
+
+class function TFuncoesComuns.NumeroVersaoAndroid: Integer;
+begin
+  Result := TOSVersion.Major;
+end;
+
+class function TFuncoesComuns.VersaoAndroid(var AModelName: string; var AArchitecture: string; var AOSVersion: string): boolean;
+begin
+  try
+    AModelName := ModeloAndroid();
+    AArchitecture := ArquiteturaAndroid();
+    AOSVersion := IntToStr(TOSVersion.Major) + '.' + IntToStr(TOSVersion.Minor);
+    Result := true;
+  except
+    Result := false;
+  end;
+end;
+
+class function TFuncoesComuns.versaoapp: string;
+var
+  lpkgInfo: JPackageInfo;
+begin
+  lpkgInfo := TAndroidHelper.Activity.GetPackageManager.GetpackageInfo(TAndroidHelper.Activity.getpackageName, 0);
+  Result := JStringToString(lpkgInfo.versionName);
+{$IFDEF DEBUG}
+  Result := Result + ' debug';
+{$ENDIF}
+end;
+
+class function TFuncoesComuns.SerieDispositivo(ARetornaFormatado: boolean = false): string;
+var
+  lSerialFormatado, ls, lSerial: string;
+  lc: Integer;
+begin
+  lSerial := JStringToString(TJBuild.JavaClass.SERIAL);
+
+  if (ARetornaFormatado) then
+  begin
+    lSerialFormatado := EmptyStr;
+    lc := 1;
+    for ls in lSerial do
+    begin
+      lSerialFormatado := lSerialFormatado + ls;
+      inc(lc);
+      if lc > 4 then
+      begin
+        lc := 1;
+        lSerialFormatado := lSerialFormatado + ' ';
+      end;
+    end;
+    lSerial := lSerialFormatado;
+  end;
+  Result := lSerial;
+end;
+
+class function TFuncoesComuns.CarregaArquivo(ANomeArquivo: string): string;
+begin
+  if TFile.Exists(TPath.Combine(TPath.getdocumentspath, ANomeArquivo)) then
+    Result := TFile.ReadAllText(TPath.Combine(TPath.getdocumentspath, ANomeArquivo))
+  else
+    Result := EmptyStr;
+end;
+
+class function TFuncoesComuns.CheckConexaoComInternet: boolean;
+var
+  HttpClient: THTTPClient;
+begin
+  HttpClient := THTTPClient.Create;
+  try
+    Result := HttpClient.Head('https://google.com').StatusCode < 400;
+  except
+    Result := false;
+  end;
+  HttpClient.DisposeOF;
+end;
+
+class function TFuncoesComuns.DeletaArquivo(ANomeArquivo: string): boolean;
+begin
+  try
+
+    if TFile.Exists(TPath.Combine(TPath.getdocumentspath, ANomeArquivo)) then
+    begin
+      TFile.Delete(TPath.Combine(TPath.getdocumentspath, ANomeArquivo));
+      Result := true;
+    end
+    else
+      Result := false;
+  except
+    Result := false;
+  end;
+end;
+
+class function TFuncoesComuns.ExisteArquivo(ANomeArquivo: string): boolean;
+begin
+  Result := TFile.Exists(TPath.Combine(TPath.getdocumentspath, ANomeArquivo));
+end;
+
+class function TFuncoesComuns.RenomeiaArquivo(AArquivoOrigem, AArquivoDestino: string): boolean;
+begin
+  Result := false;
+  try
+    if ExisteArquivo(AArquivoOrigem) then
+    begin
+      if ExisteArquivo(AArquivoDestino) then
+        DeletaArquivo(AArquivoDestino);
+      TFile.Copy(TPath.Combine(TPath.getdocumentspath, AArquivoOrigem), TPath.Combine(TPath.getdocumentspath, AArquivoDestino));
+      DeletaArquivo(AArquivoOrigem);
+      Result := true;
+    end;
+  except
+  end;
+end;
+
+class function TFuncoesComuns.formatacnpj(ADocumento: string): string;
+begin
+  Delete(ADocumento, ansipos('.', ADocumento), 1); // Remove ponto .
+  Delete(ADocumento, ansipos('.', ADocumento), 1);
+  Delete(ADocumento, ansipos('-', ADocumento), 1); // Remove traço -
+  Delete(ADocumento, ansipos('/', ADocumento), 1); // Remove barra /
+  Result := FormatmaskText('00\.000\.000\/0000\-00;0;', ADocumento);
+end;
+
+class function TFuncoesComuns.formatacpf(ADocumento: string): string;
+begin
+  Delete(ADocumento, ansipos('.', ADocumento), 1); // Remove ponto .
+  Delete(ADocumento, ansipos('.', ADocumento), 1);
+  Delete(ADocumento, ansipos('-', ADocumento), 1); // Remove traço -
+  Delete(ADocumento, ansipos('/', ADocumento), 1); // Remove barra /
+  Result := FormatmaskText('000\.000\.000\-00;0;', ADocumento);
+  // Formata os numero
+end;
+
+class function TFuncoesComuns.formataDocumento(ADocumento: string): string;
+begin
+  if Copy(ADocumento, 1, 3) = '000' then
+    ADocumento := Copy(ADocumento, 4);
+
+  Delete(ADocumento, ansipos('.', ADocumento), 1); // Remove ponto .
+  Delete(ADocumento, ansipos('.', ADocumento), 1);
+  Delete(ADocumento, ansipos('-', ADocumento), 1); // Remove traço -
+  Delete(ADocumento, ansipos('/', ADocumento), 1); // Remove barra /
+
+  if ADocumento.Length > 11 then
+    Result := formatacnpj(ADocumento)
+  else
+    Result := formatacpf(ADocumento);
+end;
+
+class function TFuncoesComuns.TamanhoDoArquivo(ANomeArquivo: string): Integer;
+begin
+  Result := TFile.GetSize(TPath.Combine(TPath.getdocumentspath, ANomeArquivo));
+end;
+
+class function TFuncoesComuns.NomeArquivo(ANomeArquivo: string): boolean;
+begin
+  Result := TFile.Exists(TPath.Combine(TPath.getdocumentspath, ANomeArquivo));
+end;
+
+class function TFuncoesComuns.FormatEditMask(aMask, aValue: String): String;
+var
+  M, V: Integer;
+  Texto: String;
+begin
+  Result := '';
+  Texto := '';
+  aMask := aMask.ToUpper;
+  for V := 0 to aValue.Length - 1 do
+    if CharInSet(aValue.Chars[V], ['0' .. '9']) then
+      Texto := Texto + aValue.Chars[V];
+  M := 0;
+  V := 0;
+  while (V < Texto.Length) And (M < aMask.Length) do
+  Begin
+    While aMask.Chars[M] <> '#' Do
+    Begin
+      Result := Result + aMask.Chars[M];
+      inc(M);
+    End;
+    Result := Result + Texto.Chars[V];
+    inc(M);
+    inc(V);
+  End;
+end;
+
+class function TFuncoesComuns.FormatJson(AJson: string): string;
+var
+  tmpJson: TJsonValue;
+begin
+  try
+    tmpJson := TJsonObject.ParseJSONValue(AJson);
+    Result := tmpJson.Format();
+    FreeAndNil(tmpJson);
+  Except
+    Result := string.Empty;
+  end;
+end;
+
+class function TFuncoesComuns.iif(condicao: boolean; condicao_ok, condicao_nok: variant): variant;
+begin
+  if condicao then
+    Result := condicao_ok
+  else
+    Result := condicao_nok;
+end;
+
+class function TFuncoesComuns.FormataValor(AValor: string; AIncluiMoeda: boolean = true): string;
+var
+  lValor: Extended;
+begin
+
+  AValor := StringReplace(AValor, '.', '', [rfReplaceAll]);
+  AValor := StringReplace(AValor, ',', '', [rfReplaceAll]);
+  lValor := StrToFloat(AValor);
+
+  if lValor > 0 then
+    lValor := lValor / 100;
+
+  Result := iif(AIncluiMoeda, 'R$ ', '') + FormatFloat('#0.,00', lValor);
+end;
+
+class function TFuncoesComuns.NomeRede(ACodigoRede: string): string;
+var
+  lCodigoRede: Integer;
+begin
+  lCodigoRede := StrToIntDef(ACodigoRede, 0);
+
+  case lCodigoRede of
+    125:
+      Result := 'Cielo';
+    181:
+      Result := 'GetNetLac';
+    5:
+      Result := '	REDE';
+    207:
+      Result := 'Elavon';
+    21:
+      Result := '	VERO';
+    229:
+      Result := 'FirstData/BIN';
+    206:
+      Result := 'Global Payments';
+    186:
+      Result := 'Neus';
+    236:
+      Result := 'Conductor';
+  else
+    Result := 'Indefinida';
+  end;
+end;
+
+class function TFuncoesComuns.SalvaArquivo(ANomeArquivo, AConteudo: string; AExcluiArquivo: boolean): boolean;
+var
+  lTxt: string;
+begin
+  try
+
+    if (not AExcluiArquivo) then
+    begin
+      if TFile.Exists(TPath.Combine(TPath.getdocumentspath, ANomeArquivo)) then
+      begin
+        lTxt := TFile.ReadAllText(TPath.Combine(TPath.getdocumentspath, ANomeArquivo));
+        lTxt := lTxt + #13 + #10 + AConteudo;
+      end
+      else
+        lTxt := AConteudo;
+    end
+    else
+      lTxt := AConteudo;
+
+    TFile.WriteAllText(TPath.Combine(TPath.getdocumentspath, ANomeArquivo), lTxt);
+    Result := true;
+  except
+    Result := false;
+  end;
+
+end;
+
+class function TFuncoesComuns.SalvaLOG(ANomeArquivo, AConteudo: string): Integer;
+var
+  lArq: TextFile;
+begin
+  Assign(lArq, TPath.Combine(TPath.getdocumentspath, ANomeArquivo));
+  if TFile.Exists(TPath.Combine(TPath.getdocumentspath, ANomeArquivo)) then
+    Append(lArq)
+  else
+    Rewrite(lArq);
+  Writeln(lArq, AConteudo);
+  CloseFile(lArq);
+  Result := TFile.GetSize(TPath.Combine(TPath.getdocumentspath, ANomeArquivo))
+end;
+
+class procedure TFuncoesComuns.StartButtonAnimation(rectButton: TRectangle; lbl: TLabel; arc: TArc; animation: TFloatAnimation);
+begin
+  arc.Visible := true;
+  animation.Start;
+
+  rectButton.Opacity := 0.99;
+  rectButton.Enabled := false;
+  if Assigned(lbl) then
+    lbl.Visible := false;
+end;
+
+class procedure TFuncoesComuns.StopButtonAnimation(rectButton: TRectangle; lbl: TLabel; arc: TArc; animation: TFloatAnimation);
+begin
+  if Assigned(lbl) then
+    lbl.Visible := true;
+
+  rectButton.Opacity := 1;
+  rectButton.Enabled := true;
+
+  arc.Visible := false;
+  animation.Stop;
+end;
+
+class procedure TFuncoesComuns.AndroidBeep(ADuration: Integer);
+var
+  Volume: Integer;
+  StreamType: Integer;
+  ToneType: Integer;
+  ToneGenerator: JToneGenerator;
+begin
+
+  Volume := TJToneGenerator.JavaClass.MAX_VOLUME;
+
+  StreamType := 4;
+  ToneType := TJToneGenerator.JavaClass.TONE_DTMF_0;
+
+  ToneGenerator := TJToneGenerator.JavaClass.init(StreamType, Volume);
+  ToneGenerator.startTone(ToneType, ADuration);
+
+end;
+
+class function TFuncoesComuns.GetPhoneICCID(): string;
+var
+  lResult: JString;
+  lTelephonyManager: Androidapi.JNI.Telephony.JTelephonyManager;
+begin
+  lTelephonyManager := TJtelephonyManager.Create;
+  lTelephonyManager := TJtelephonyManager.Wrap((TAndroidHelper.Context.getSystemService(TJContext.JavaClass.TELEPHONY_SERVICE) as ILocalObject).GetObjectID);
+  lResult := lTelephonyManager.getSimSerialNumber;
+  Result := JStringToString(lResult);
+end;
+
+end.

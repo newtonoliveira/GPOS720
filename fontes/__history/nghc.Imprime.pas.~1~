@@ -1,0 +1,221 @@
+unit uCImprime;
+
+interface
+
+uses
+  System.SysUtils,
+  System.Types,
+  System.UITypes,
+  System.Classes,
+  System.Variants,
+  FMX.Types,
+  FMX.Controls,
+  FMX.Forms,
+  FMX.Graphics,
+  FMX.Dialogs,
+  FMX.StdCtrls,
+  FMX.Edit,
+  System.IOUtils,
+  uCFuncoesComuns,
+  G700Interface,
+  GEDIPrinter;
+
+type
+  TAlinhamento = (DIREITA, ESQUERDA, CENTRALIZADO);
+
+  TImprime = class
+
+  public
+    procedure salvacupom(texto: string; cabecalho, rodape: array of string; viacliente: boolean);
+    procedure cupom(viacliente: boolean); overload;
+    procedure cupom(texto: string; cabecalho: array of string; rodape: array of string; viacliente: boolean = false); overload;
+    procedure Ln(ATexto: string; AAlinhamento: TAlinhamento = ESQUERDA; AFlagNegrito: boolean = false; AFlagItalico: boolean = false;
+      ATamanhoFonte: integer = 18; ASaltaLinhaAutomatica: boolean = true);
+    procedure PulaLn(AQtdLn: integer = 1);
+    procedure SeparadorLn(AStr: char = '=');
+    procedure Bitmap(Bitmap: TBitmap);
+    procedure imprime();
+    function ImpressoraOK(): boolean;
+  end;
+
+implementation
+
+{ TImprime }
+
+procedure TImprime.Bitmap(Bitmap: TBitmap);
+begin
+end;
+
+procedure TImprime.salvacupom(texto: string; cabecalho: array of string; rodape: array of string; viacliente: boolean);
+var
+  lBuffer: string;
+  lLinha: string;
+  lArquivo: string;
+begin
+  lBuffer := string.Empty;
+
+  try
+    for lLinha in cabecalho do
+      lBuffer := lBuffer + lLinha + '|';
+
+    if viacliente then
+      lBuffer := lBuffer + string('Via do Cliente').PadLeft(40).PadRight(40) + '|'
+    else
+      lBuffer := lBuffer + string('Via do estabelecimento').PadLeft(40).PadRight(40) + '|';
+
+    texto := StringReplace(texto, '--------- 2 via - cliente ------------', '', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '--------- 1 via - cliente ------------', '', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '2 via cliente', '', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '2 via loja', '', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '1 via loja', '', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '1 via - loja', '', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '2 via - cliente', '', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '1 via cliente', '', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, #13#10#13#10, '|', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '\n', '|', [rfReplaceAll, rfIgnoreCase]);
+    texto := StringReplace(texto, '\\n', '|', [rfReplaceAll, rfIgnoreCase]);
+
+    lBuffer := lBuffer + texto;
+
+    for lLinha in rodape do
+      lBuffer := lBuffer + lLinha + '|';
+
+    lBuffer := StringReplace(lBuffer, '|', #13, [rfReplaceAll, rfIgnoreCase]);
+
+    if (viacliente) then
+      lArquivo := 'viacliente'
+    else
+      lArquivo := 'viaestab';
+
+    TFuncoesComuns.SalvaArquivo(lArquivo, lBuffer);
+  except
+  end;
+end;
+
+procedure TImprime.cupom(viacliente: boolean);
+var
+  lCupom: TStringDynArray;
+  lLinha: string;
+  lArquivo: string;
+begin
+  if (viacliente) then
+    lArquivo := 'viacliente'
+  else
+    lArquivo := 'viaestab';
+  lCupom := TFile.ReadAllLines(TPath.Combine(TPath.getdocumentspath, lArquivo));
+
+  for lLinha in lCupom do
+    if lLinha.Trim <> string.Empty then
+      Ln(lLinha);
+  Ln(#13);
+  if (viacliente) then
+    Ln(#13#10)
+  else
+    Ln('======================================', ESQUERDA, true);
+  Ln(#13#10);
+  imprime();
+end;
+
+procedure TImprime.cupom(texto: string; cabecalho: array of string; rodape: array of string; viacliente: boolean);
+var
+  lLinha: string;
+begin
+  try
+    if (ImpressoraOK()) then
+    begin
+
+      for lLinha in cabecalho do
+        Ln(lLinha);
+
+      if viacliente then
+        Ln('Via do Cliente', CENTRALIZADO, true)
+      else
+        Ln('Via do Estabelecimento', CENTRALIZADO, true);
+
+      texto := StringReplace(texto, '2 via cliente', '', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '2 via loja', '', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '1 via loja', '', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '1 via - loja', '', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '2 via - cliente', '', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '1 via cliente', '', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, #13#10#13#10, #13#10, [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '\n\n\n\n\n', '\n', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '\\n\\n\\n\\n\\n\\n', '\n', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '\n\n\n\n\n\n', '\n', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '\\n\\n\\n\\n\\n\\n', '\n', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '\n\n\n', '\n', [rfReplaceAll, rfIgnoreCase]);
+      texto := StringReplace(texto, '\\n\\n\\n', '\n', [rfReplaceAll, rfIgnoreCase]);
+
+      Ln(texto);
+
+      for lLinha in rodape do
+        Ln(lLinha, TAlinhamento.CENTRALIZADO);
+
+      PulaLn(2);
+      imprime();
+    end;
+  except
+  end;
+end;
+
+function TImprime.ImpressoraOK: boolean;
+begin
+  result := GertecPrinter.CodigoStatusImpressora() = 0;
+end;
+
+procedure TImprime.imprime;
+begin
+  if ImpressoraOK then
+    GertecPrinter.printOutput
+  else
+    raise Exception.Create('Erro na impressão do cupom (' + GertecPrinter.CodigoStatusImpressora().ToString() + ')');
+end;
+
+procedure TImprime.Ln(ATexto: string; AAlinhamento: TAlinhamento; AFlagNegrito, AFlagItalico: boolean; ATamanhoFonte: integer;
+  ASaltaLinhaAutomatica: boolean);
+var
+  lAlinhamento: T_ALINHAMENTO;
+begin
+
+  lAlinhamento := T_ALINHAMENTO.CENTRALIZADO;
+
+  if (ImpressoraOK()) then
+  begin
+    case AAlinhamento of
+      DIREITA:
+        lAlinhamento := T_ALINHAMENTO.DIREITA;
+      ESQUERDA:
+        lAlinhamento := T_ALINHAMENTO.ESQUERDA;
+      CENTRALIZADO:
+        lAlinhamento := T_ALINHAMENTO.CENTRALIZADO;
+    end;
+
+    if ASaltaLinhaAutomatica then
+      ATexto := ATexto + #13;
+
+    GertecPrinter.FlagBold := AFlagNegrito;
+    GertecPrinter.FlagItalico := AFlagItalico;
+    GertecPrinter.textSize := ATamanhoFonte;
+    GertecPrinter.printString(lAlinhamento, ATexto);
+  end;
+
+end;
+
+procedure TImprime.PulaLn(AQtdLn: integer);
+var
+  li: integer;
+begin
+  if ImpressoraOK() then
+  begin
+    for li := 1 to AQtdLn do
+      Ln(#13 + #10);
+  end;
+end;
+
+procedure TImprime.SeparadorLn(AStr: char);
+begin
+  if ImpressoraOK() then
+    Ln(StringOfChar(AStr, 37), ESQUERDA, true, false, 18);
+end;
+
+end.

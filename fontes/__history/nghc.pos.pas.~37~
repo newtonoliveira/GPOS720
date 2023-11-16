@@ -1,0 +1,225 @@
+unit nghc.pos;
+
+interface
+
+uses
+  System.SysUtils,
+  System.Types,
+  System.UITypes,
+  System.Classes,
+  System.Variants,
+  FMX.Types,
+  FMX.Controls,
+  FMX.Forms,
+  FMX.Graphics,
+  FMX.Dialogs,
+  FMX.Layouts,
+  FMX.Controls.Presentation,
+  FMX.StdCtrls,
+  FMX.Effects,
+  FMX.Objects,
+
+  sitef.constants,
+
+  nghc.Log,
+  nghc.CliSitef,
+  nghc.funcoescomuns,
+  nghc.imprime;
+
+type
+  TfrmPrincipal = class(TForm)
+    imgTitulo: TImage;
+    lytTransacao: TLayout;
+    lytTeclado: TLayout;
+    gpnTeclado: TGridPanelLayout;
+    rctNumero1: TRectangle;
+    sdeNumero1: TShadowEffect;
+    lblNumero1: TLabel;
+    rctNumero2: TRectangle;
+    sdeNumero2: TShadowEffect;
+    lblNumero2: TLabel;
+    rctNumero3: TRectangle;
+    sdeNumero3: TShadowEffect;
+    lblNumero3: TLabel;
+    rctNumero4: TRectangle;
+    sdeNumero4: TShadowEffect;
+    lblNumero4: TLabel;
+    rctNumero5: TRectangle;
+    sdeNumero5: TShadowEffect;
+    lblNumero5: TLabel;
+    rctNumero6: TRectangle;
+    sdeNumero6: TShadowEffect;
+    lblNumero6: TLabel;
+    rctNumero7: TRectangle;
+    sdeNumero7: TShadowEffect;
+    lblNumero7: TLabel;
+    rctNumero8: TRectangle;
+    sdeNumero8: TShadowEffect;
+    lblNumero8: TLabel;
+    rctNumero9: TRectangle;
+    sdeNumero9: TShadowEffect;
+    lblNumero9: TLabel;
+    rctNumero0: TRectangle;
+    ShadowEffect10: TShadowEffect;
+    lblNumero0: TLabel;
+    rctLimpa: TRectangle;
+    sdeLimpa: TShadowEffect;
+    lblLimpa: TLabel;
+    rctTransaciona: TRectangle;
+    sdeBackSpace: TShadowEffect;
+    lblTransaciona: TLabel;
+    lblDigiteoValor: TLabel;
+    lblValorDaTransacao: TLabel;
+    lytMensagensTEF: TLayout;
+    lblMensagemTEF: TLabel;
+    procedure btnNumero(Sender: TObject; const Point: TPointF);
+    procedure btnLimpa(Sender: TObject; const Point: TPointF);
+    procedure btnTransaciona(Sender: TObject; const Point: TPointF);
+  private
+    function GetValorTransacao: extended;
+    procedure RotinaColeta(AComando: integer; ABuffer: string);
+    procedure RotinaResultado(ACampo: integer; ABuffer: string);
+    { Private declarations }
+  public
+    procedure MostraMensagemTEF(AMensagem: string);
+    procedure ResultadoTEF(AClisitefRespostaTransacao: TClisitefRespostaTransacao);
+
+    { Public declarations }
+  end;
+
+var
+  frmPrincipal: TfrmPrincipal;
+
+implementation
+
+{$R *.fmx}
+
+function TfrmPrincipal.GetValorTransacao: extended;
+var
+  lValor: string;
+begin
+  try
+    lValor := StringReplace(lblValorDaTransacao.Text, ',', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, 'R$', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, '.', '', [rfReplaceAll]);
+    result := StrToFloat(lValor) / 100;
+  except
+    result := 0;
+  end;
+end;
+
+procedure TfrmPrincipal.btnLimpa(Sender: TObject; const Point: TPointF);
+begin
+  tthread.Synchronize(nil,
+    procedure
+    begin
+      lblValorDaTransacao.Text := 'R$ 0,00';
+      var
+        lPoint: TPointF;
+      btnNumero(Sender, lPoint);
+    end);
+end;
+
+procedure TfrmPrincipal.btnNumero(Sender: TObject; const Point: TPointF);
+var
+  lValor: string;
+  lValorTransacao: extended;
+begin
+  try
+    lValor := StringReplace(lblValorDaTransacao.Text, ',', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, 'R$', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, '.', '', [rfReplaceAll]);
+    lValor := lValor + TRectangle(Sender).Tag.ToString();
+    lValorTransacao := StrToFloat(lValor.Trim);
+
+    if lValorTransacao > 0 then
+      lValorTransacao := lValorTransacao / 100;
+
+    tthread.Synchronize(nil,
+      procedure
+      begin
+        lblValorDaTransacao.Text := 'R$ ' + FormatFloat('#0.,00', lValorTransacao);
+      end);
+
+  except
+    tthread.Synchronize(nil,
+      procedure
+      begin
+        lblValorDaTransacao.Text := 'R$ ' + FormatFloat('#0.,00', lValorTransacao);
+      end);
+  end;
+
+end;
+
+procedure TfrmPrincipal.btnTransaciona(Sender: TObject; const Point: TPointF);
+var
+  lCliSitef: TCliSItef;
+begin
+
+  try
+    lCliSitef := TCliSItef.Create;
+    lCliSitef.ValorTransacao := GetValorTransacao();
+    lCliSitef.QtdParcelas := 1;
+    lCliSitef.CodigoLoja := '00000000';
+    lCliSitef.NumeroTerminal := 'SE000001';
+    lCliSitef.EnderecoIPSitef := '192.168.3.100';
+    lCliSitef.PortaSitef := 4096;
+    lCliSitef.onRotinaColeta := RotinaColeta;
+    lCliSitef.onRotinaResultado := RotinaResultado;
+    lCliSitef.OnResultadoTEF := ResultadoTEF;
+
+    MostraMensagemTEF('Iniciando a transação');
+
+    lCliSitef.transaciona(FORMAPAGAMENTO_CREDITO, '123456');
+  except
+    on e: exception do
+      MostraMensagemTEF(e.Message);
+  end;
+end;
+
+procedure TfrmPrincipal.MostraMensagemTEF(AMensagem: string);
+begin
+  tthread.Synchronize(nil,
+    procedure
+    begin
+      lblMensagemTEF.Text := AMensagem;
+    end);
+end;
+
+procedure TfrmPrincipal.RotinaColeta(AComando: integer; ABuffer: string);
+begin
+  TLog.I('RotinaColeta Campo=' + AComando.ToString + ' Buffer=' + ABuffer);
+
+  case AComando of
+    CMD_MENSAGEM_OPERADOR, CMD_MENSAGEM_CLIENTE, CMD_MENSAGEM:
+      begin
+        MostraMensagemTEF(ABuffer);
+      end;
+  end;
+end;
+
+procedure TfrmPrincipal.RotinaResultado(ACampo: integer; ABuffer: string);
+begin
+  TLog.I('RotinaResultado Campo=' + ACampo.ToString + ' Buffer=' + ABuffer);
+end;
+
+procedure TfrmPrincipal.ResultadoTEF(AClisitefRespostaTransacao: TClisitefRespostaTransacao);
+begin
+  MostraMensagemTEF(AClisitefRespostaTransacao.CodigoResposta + '->' + AClisitefRespostaTransacao.Mensagem);
+
+  if AClisitefRespostaTransacao.CodigoResposta = TRANSACAO_AUTORIZADA then
+  begin
+    var
+      lImprime: TImprime;
+    lImprime.Create();
+    lImprime.cupom(AClisitefRespostaTransacao.ViaCliente);
+    lImprime.cupom(AClisitefRespostaTransacao.ViaEstabelecimento);
+
+    Sleep(100);
+    lImprime.Free;
+
+  end;
+
+end;
+
+end.

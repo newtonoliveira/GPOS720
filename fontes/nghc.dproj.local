@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2023/11/15 15:50:56.000.811,=\\Mac\Home\Documents\Embarcadero\Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2023/11/15 15:51:38.000.022,\\Mac\Home\Documents\Embarcadero\Studio\Projects\Unit1.pas=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\nghc.pos.pas</Transaction>
+    <Transaction>2023/11/15 15:51:38.000.022,\\Mac\Home\Documents\Embarcadero\Studio\Projects\Unit1.fmx=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\nghc.pos.fmx</Transaction>
+    <Transaction>2023/11/15 15:51:49.000.001,\\Mac\Home\Documents\Embarcadero\Studio\Projects\Project2.dproj=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\nghc.dproj</Transaction>
+    <Transaction>2023/11/15 15:53:03.000.303,=C:\Users\newtonoliveira\source\repos\DUG-RS\libs\clisitef-7.0.117.76.r4\clisitef\hml\libs\clisitef-android.jar</Transaction>
+    <Transaction>2023/11/15 15:53:27.000.134,=C:\Users\newtonoliveira\source\repos\DUG-RS\libs\ppcomp-v1.33-230817\PPCompGPOS720-v1.33-Complete-debug.jar</Transaction>
+    <Transaction>2023/11/15 15:55:15.000.671,=C:\Users\newtonoliveira\source\repos\DUG-RS\libs\libgedi-0.16.17\libgedi-0.16.17-beta.0-gpos720-payment-release.jar</Transaction>
+    <Transaction>2023/11/15 16:07:32.000.957,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\nghc.funcoescomuns.pas</Transaction>
+    <Transaction>2023/11/15 16:07:33.000.350,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\sitef.clisitefi.pas</Transaction>
+    <Transaction>2023/11/15 16:07:33.000.050,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\nghc.Log.pas</Transaction>
+    <Transaction>2023/11/15 16:07:33.000.441,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\sitef.constants.pas</Transaction>
+    <Transaction>2023/11/15 16:07:33.000.254,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\sitef.clisitef.pas</Transaction>
+    <Transaction>2023/11/15 16:53:04.000.930,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\nghc.clisitef.pas</Transaction>
+    <Transaction>2023/11/15 17:28:08.000.950,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\gertec.gpos720Printer.pas</Transaction>
+    <Transaction>2023/11/15 17:28:08.000.888,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\gertec.gpos720Interface.pas</Transaction>
+    <Transaction>2023/11/15 18:09:08.000.802,C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\gertec.gpos720Printer.pas=</Transaction>
+    <Transaction>2023/11/15 18:09:09.000.007,C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\gertec.gpos720Interface.pas=</Transaction>
+    <Transaction>2023/11/15 18:10:10.000.715,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\G720Interface.pas</Transaction>
+    <Transaction>2023/11/15 18:10:10.000.839,=C:\Users\newtonoliveira\source\repos\DUG-RS\fontes\G720Printer.pas</Transaction>
+  </Transactions>
+	<ActiveMobileDevice>
+		<NoProfile Android="af8e6020" Android64="af8e6020"/>
+	</ActiveMobileDevice>
+	<BT_BuildType>AppStore</BT_BuildType>
+</BorlandProject>

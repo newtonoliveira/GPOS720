@@ -1,0 +1,103 @@
+unit nghc.imprime;
+
+interface
+
+uses
+  System.SysUtils,
+  System.Types,
+  System.UITypes,
+  System.Classes,
+  System.Variants,
+  FMX.Types,
+  FMX.Controls,
+  FMX.Forms,
+  FMX.Graphics,
+  FMX.Dialogs,
+  FMX.StdCtrls,
+  FMX.Edit,
+  System.IOUtils,
+  gertec.gpos720Interface,
+  gertec.gpos720Printer;
+
+type
+  TAlinhamento = (DIREITA, ESQUERDA, CENTRALIZADO);
+
+  TImprime = class
+
+  public
+    procedure cupom(ATexto: string);
+    procedure Ln(ATexto: string; AAlinhamento: TAlinhamento = ESQUERDA; AFlagNegrito: boolean = false; AFlagItalico: boolean = false; ATamanhoFonte: integer = 18; ASaltaLinhaAutomatica: boolean = true);
+    procedure PulaLn(AQtdLn: integer = 1);
+    procedure SeparadorLn(AStr: char = '=');
+    procedure Bitmap(Bitmap: TBitmap);
+    procedure imprime();
+  end;
+
+implementation
+
+{ TImprime }
+
+procedure TImprime.Bitmap(Bitmap: TBitmap);
+begin
+end;
+
+procedure TImprime.cupom(ATexto: string);
+var
+  lCupom: TStringDynArray;
+  lLinha: string;
+  lArquivo: string;
+begin
+  Ln(ATexto);
+  Ln(#13);
+  imprime();
+end;
+
+procedure TImprime.imprime;
+begin
+  GertecPrinter.printOutput
+end;
+
+procedure TImprime.Ln(ATexto: string; AAlinhamento: TAlinhamento; AFlagNegrito, AFlagItalico: boolean; ATamanhoFonte: integer; ASaltaLinhaAutomatica: boolean);
+var
+  lAlinhamento: T_ALINHAMENTO;
+begin
+
+  lAlinhamento := T_ALINHAMENTO.CENTRALIZADO;
+
+  case AAlinhamento of
+    DIREITA:
+      lAlinhamento := T_ALINHAMENTO.DIREITA;
+    ESQUERDA:
+      lAlinhamento := T_ALINHAMENTO.ESQUERDA;
+    CENTRALIZADO:
+      lAlinhamento := T_ALINHAMENTO.CENTRALIZADO;
+  end;
+
+  if ASaltaLinhaAutomatica then
+    ATexto := ATexto + #13;
+
+  GertecPrinter.FlagBold := AFlagNegrito;
+  GertecPrinter.FlagItalico := AFlagItalico;
+  GertecPrinter.textSize := ATamanhoFonte;
+  GertecPrinter.printString(lAlinhamento, ATexto);
+
+end;
+
+procedure TImprime.PulaLn(AQtdLn: integer);
+var
+  li: integer;
+begin
+  if ImpressoraOK() then
+  begin
+    for li := 1 to AQtdLn do
+      Ln(#13 + #10);
+  end;
+end;
+
+procedure TImprime.SeparadorLn(AStr: char);
+begin
+  if ImpressoraOK() then
+    Ln(StringOfChar(AStr, 37), ESQUERDA, true, false, 18);
+end;
+
+end.

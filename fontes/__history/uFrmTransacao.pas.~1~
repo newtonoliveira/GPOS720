@@ -1,0 +1,350 @@
+unit uFrmTransacao;
+
+interface
+
+uses
+  System.SysUtils,
+  System.Types,
+  System.UITypes,
+  System.Classes,
+  System.Variants,
+  FMX.Types,
+  FMX.Controls,
+  FMX.Forms,
+  FMX.Graphics,
+  FMX.Dialogs,
+  FMX.Layouts,
+  FMX.Objects,
+  FMX.Controls.Presentation,
+  FMX.StdCtrls,
+  FMX.Effects,
+  uPermissoes,
+  uCPermissions,
+  Androidapi.Helpers,
+  Androidapi.JNI.Os,
+  uCliSItef,
+  constants,
+  uLog,
+  uCFuncoesComuns,
+  uCImprime;
+
+type
+  TfrmTransacao = class(TForm)
+    lytTransacao: TLayout;
+    lytTeclado: TLayout;
+    gpnTeclado: TGridPanelLayout;
+    rctNumero1: TRectangle;
+    sdeNumero1: TShadowEffect;
+    lblNumero1: TLabel;
+    rctNumero2: TRectangle;
+    sdeNumero2: TShadowEffect;
+    lblNumero2: TLabel;
+    rctNumero3: TRectangle;
+    sdeNumero3: TShadowEffect;
+    lblNumero3: TLabel;
+    rctNumero4: TRectangle;
+    sdeNumero4: TShadowEffect;
+    lblNumero4: TLabel;
+    rctNumero5: TRectangle;
+    sdeNumero5: TShadowEffect;
+    lblNumero5: TLabel;
+    rctNumero6: TRectangle;
+    sdeNumero6: TShadowEffect;
+    lblNumero6: TLabel;
+    rctNumero7: TRectangle;
+    sdeNumero7: TShadowEffect;
+    lblNumero7: TLabel;
+    rctNumero8: TRectangle;
+    sdeNumero8: TShadowEffect;
+    lblNumero8: TLabel;
+    rctNumero9: TRectangle;
+    sdeNumero9: TShadowEffect;
+    lblNumero9: TLabel;
+    rctNumero0: TRectangle;
+    ShadowEffect10: TShadowEffect;
+    lblNumero0: TLabel;
+    rctLimpa: TRectangle;
+    sdeLimpa: TShadowEffect;
+    lblLimpa: TLabel;
+    rctBackSpace: TRectangle;
+    sdeBackSpace: TShadowEffect;
+    lblBackSpace: TLabel;
+    lblDigiteoValor: TLabel;
+    lblValorDaTransacao: TLabel;
+    lytBotoes: TLayout;
+    rctTransacaoDebito: TRectangle;
+    lblTransacaoDebito: TLabel;
+    rctTransacaoCredito: TRectangle;
+    lblTransacaoCredito: TLabel;
+    lytMensagensTEF: TLayout;
+    lblMensagemTEF: TLabel;
+    procedure rctTeclado(Sender: TObject; const Point: TPointF);
+    procedure rctLimpaTap(Sender: TObject; const Point: TPointF);
+    procedure rctBackSpaceTap(Sender: TObject; const Point: TPointF);
+    procedure FormCreate(Sender: TObject);
+    procedure rctTransacaoDebitoTap(Sender: TObject; const Point: TPointF);
+    procedure rctTransacaoCreditoTap(Sender: TObject; const Point: TPointF);
+  private
+    { Private declarations }
+    procedure MostraMensagemTEF(AMensagem: string);
+    function GetValorTransacao(): extended;
+
+    procedure RotinaColeta(AComando: integer; ABuffer: string);
+    procedure RotinaResultado(ACampo: integer; ABuffer: string);
+    procedure ResultadoTEF(AClisitefRespostaTransacao: TClisitefRespostaTransacao);
+    function ModeloAndroid(): string;
+
+  public
+    { Public declarations }
+  end;
+
+var
+  frmTransacao: TfrmTransacao;
+
+implementation
+
+{$R *.fmx}
+{ TfrmTransacao }
+
+procedure TfrmTransacao.FormCreate(Sender: TObject);
+var
+  lPermissoes: TPermissoes;
+  lPermissions: TPermissions;
+begin
+
+  TLog.I('Criando formulário, solicitando permissões');
+  TLog.I('Android modelo=' + ModeloAndroid());
+
+  if ((ModeloAndroid() = 'GPOS700X') or (ModeloAndroid() = 'GPOS720')) then
+  begin
+    lPermissoes := TPermissoes.Create;
+    lPermissoes.configura(false);
+  end
+  else
+  begin
+    lPermissions := TPermissions.Create();
+
+    lPermissions.BLUETOOTH_ADMIN := true;
+    lPermissions.BLUETOOTH := true;
+
+    lPermissions.BLUETOOTH_ADVERTISE := true;
+    lPermissions.BLUETOOTH_CONNECT := true;
+    lPermissions.BLUETOOTH_SCAN := true;
+    lPermissions.GrantNow;
+  end;
+
+end;
+
+function TfrmTransacao.GetValorTransacao: extended;
+var
+  lValor: string;
+begin
+  try
+    lValor := StringReplace(lblValorDaTransacao.Text, ',', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, 'R$', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, '.', '', [rfReplaceAll]);
+    result := StrToFloat(lValor) / 100;
+  except
+    result := 0;
+  end;
+end;
+
+function TfrmTransacao.ModeloAndroid: string;
+begin
+  result := JStringToString(TJBuild.JavaClass.MODEL);
+end;
+
+procedure TfrmTransacao.MostraMensagemTEF(AMensagem: string);
+begin
+  tthread.Synchronize(nil,
+    procedure
+    begin
+      lblMensagemTEF.Text := AMensagem;
+    end);
+end;
+
+procedure TfrmTransacao.rctBackSpaceTap(Sender: TObject; const Point: TPointF);
+var
+  lValor: string;
+  lValorTransacao: extended;
+begin
+  try
+    lValor := StringReplace(lblValorDaTransacao.Text, ',', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, 'R$', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, '.', '', [rfReplaceAll]);
+    lValor := lValor.Substring(0, lValor.Length - 1).Trim;
+
+    lValorTransacao := StrToFloat(lValor);
+    if lValorTransacao > 0 then
+      lValorTransacao := lValorTransacao / 100;
+
+    tthread.Synchronize(nil,
+      procedure
+      begin
+        lblValorDaTransacao.Text := 'R$ ' + FormatFloat('#0.,00', lValorTransacao);
+      end);
+
+  except
+    tthread.Synchronize(nil,
+      procedure
+      begin
+        lblValorDaTransacao.Text := 'R$ ' + FormatFloat('#0.,00', lValorTransacao);
+      end);
+  end;
+end;
+
+procedure TfrmTransacao.rctLimpaTap(Sender: TObject; const Point: TPointF);
+begin
+  tthread.Synchronize(nil,
+    procedure
+    begin
+      lblValorDaTransacao.Text := 'R$ 0,00';
+    end);
+end;
+
+procedure TfrmTransacao.rctTeclado(Sender: TObject; const Point: TPointF);
+var
+  lValor: string;
+  lValorTransacao: extended;
+begin
+  try
+    lValor := StringReplace(lblValorDaTransacao.Text, ',', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, 'R$', '', [rfReplaceAll]);
+    lValor := StringReplace(lValor, '.', '', [rfReplaceAll]);
+    lValor := lValor + TRectangle(Sender).Tag.ToString();
+    lValorTransacao := StrToFloat(lValor.Trim);
+
+    if lValorTransacao > 0 then
+      lValorTransacao := lValorTransacao / 100;
+
+    tthread.Synchronize(nil,
+      procedure
+      begin
+        lblValorDaTransacao.Text := 'R$ ' + FormatFloat('#0.,00', lValorTransacao);
+      end);
+
+  except
+    tthread.Synchronize(nil,
+      procedure
+      begin
+        lblValorDaTransacao.Text := 'R$ ' + FormatFloat('#0.,00', lValorTransacao);
+      end);
+  end;
+
+end;
+
+procedure TfrmTransacao.rctTransacaoCreditoTap(Sender: TObject; const Point: TPointF);
+var
+  lCliSitef: TCliSItef;
+  lBlueToothPareado: boolean;
+begin
+  lBlueToothPareado := true;
+  try
+    lCliSitef := TCliSItef.Create;
+    lCliSitef.ValorTransacao := GetValorTransacao();
+    lCliSitef.QtdParcelas := 1;
+    lCliSitef.CodigoLoja := '00000000';
+    lCliSitef.NumeroTerminal := 'SE000001';
+    lCliSitef.EnderecoIPSitef := '';
+    lCliSitef.PortaSitef := 4096;
+    lCliSitef.onRotinaColeta := RotinaColeta;
+    lCliSitef.onRotinaResultado := RotinaResultado;
+    lCliSitef.OnResultadoTEF := ResultadoTEF;
+
+    MostraMensagemTEF('Iniciando a transação');
+
+    if ModeloAndroid() <> 'GPOS700X' then
+      lBlueToothPareado := lCliSitef.BluetoothPareado;
+
+    if not lBlueToothPareado then
+    begin
+      MostraMensagemTEF('BlueTooth não localizado!');
+      tthread.Sleep(10000);
+      MostraMensagemTEF('Selecione a forma de pagamento clicando nos botões abaixo:');
+    end
+    else
+      lCliSitef.transaciona(FORMAPAGAMENTO_CREDITO, '123456');
+  except
+    on e: exception do
+      MostraMensagemTEF(e.Message);
+  end;
+
+end;
+
+procedure TfrmTransacao.rctTransacaoDebitoTap(Sender: TObject; const Point: TPointF);
+var
+  lCliSitef: TCliSItef;
+  lBlueToothPareado: boolean;
+begin
+  lBlueToothPareado := true;
+
+  try
+    lCliSitef := TCliSItef.Create;
+    lCliSitef.ValorTransacao := GetValorTransacao();
+    lCliSitef.QtdParcelas := 1;
+    lCliSitef.CodigoLoja := '00000000';
+    lCliSitef.NumeroTerminal := 'SE000001';
+    lCliSitef.EnderecoIPSitef := '';
+
+    lCliSitef.PortaSitef := 4096;
+    lCliSitef.onRotinaColeta := RotinaColeta;
+    lCliSitef.onRotinaResultado := RotinaResultado;
+    lCliSitef.OnResultadoTEF := ResultadoTEF;
+
+    MostraMensagemTEF('Iniciando a transação');
+    if not lBlueToothPareado then
+    begin
+      MostraMensagemTEF('BlueTooth não localizado!');
+      tthread.Sleep(10000);
+      MostraMensagemTEF('Selecione a forma de pagamento clicando nos botões abaixo:');
+    end
+    else
+      lCliSitef.transaciona(FORMAPAGAMENTO_DEBITO, '123456');
+  except
+    on e: exception do
+      MostraMensagemTEF(e.Message);
+  end;
+
+end;
+
+procedure TfrmTransacao.ResultadoTEF(AClisitefRespostaTransacao: TClisitefRespostaTransacao);
+begin
+  MostraMensagemTEF(AClisitefRespostaTransacao.CodigoResposta + '->' + AClisitefRespostaTransacao.Mensagem);
+
+  if ((TFuncoesComuns.ModeloAndroid = 'GPOS700X') or (TFuncoesComuns.ModeloAndroid = 'GPOS720')) then
+  begin
+    var lImprime:TImprime;
+    lImprime := TImprime.Create();
+    if lImprime.ImpressoraOK() then
+    begin
+      lImprime.cupom(true);
+      lImprime.cupom(false);
+    end
+    else
+    begin
+      ShowMessage('Impressora indisponiel');
+    end;
+  end;
+  tthread.Sleep(5000);
+  MostraMensagemTEF('Selecione a forma de pagamento clicando nos botões abaixo:');
+
+end;
+
+procedure TfrmTransacao.RotinaColeta(AComando: integer; ABuffer: string);
+begin
+  TLog.I('RotinaColeta Campo=' + AComando.ToString + ' Buffer=' + ABuffer);
+
+  case AComando of
+    CMD_MENSAGEM_OPERADOR, CMD_MENSAGEM_CLIENTE, CMD_MENSAGEM:
+      begin
+        MostraMensagemTEF(ABuffer);
+      end;
+  end;
+end;
+
+procedure TfrmTransacao.RotinaResultado(ACampo: integer; ABuffer: string);
+begin
+  TLog.I('RotinaResultado Campo=' + ACampo.ToString + ' Buffer=' + ABuffer);
+end;
+
+end.

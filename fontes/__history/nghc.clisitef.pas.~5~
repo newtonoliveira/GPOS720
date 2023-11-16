@@ -1,0 +1,441 @@
+unit nghc.CliSitef;
+
+interface
+
+uses
+  FMX.Platform.Android,
+  System.SysUtils,
+  System.Types,
+  System.Classes,
+  System.Rtti,
+  Web.HTTPApp,
+  System.NetEncoding,
+  System.Actions,
+  FMX.ActnList,
+  System.IOUtils,
+
+  nghc.Log,
+  nghc.FuncoesComuns,
+
+  Sitef.CliSItefI,
+  Sitef.constants;
+
+type
+  TClisitefRespostaTransacao = record
+  strict private
+    FNumeroSeriePinpad: string;
+    FNsuSitef: string;
+    FNsuHost: string;
+    FCodigoAutorizacao: string;
+    FNumeroBinCartao: string;
+    FNumeroEmbosoCartao: string;
+    FCodigoAdquirente: string;
+    FCodigoBandeira: string;
+    FTipoCartao: string;
+    FDataFiscal: String;
+    FNumeroCupom: string;
+    FDataHoraSITEF: string;
+    FCodigoResposta: string;
+    FNomeDaInstituicao: string;
+    FNome_Titular: string;
+    FMensagem: string;
+    FViaCliente: string;
+    FViaEstabelecimento: string;
+  public
+    property NumeroSeriePinpad: string read FNumeroSeriePinpad write FNumeroSeriePinpad;
+    property NsuSitef: string read FNsuSitef write FNsuSitef;
+    property NsuHost: string read FNsuHost write FNsuHost;
+    property CodigoAutorizacao: string read FCodigoAutorizacao write FCodigoAutorizacao;
+    property NumeroBinCartao: string read FNumeroBinCartao write FNumeroBinCartao;
+    property NumeroEmbosoCartao: string read FNumeroEmbosoCartao write FNumeroEmbosoCartao;
+    property CodigoAdquirente: string read FCodigoAdquirente write FCodigoAdquirente;
+    property CodigoBandeira: string read FCodigoBandeira write FCodigoBandeira;
+    property TipoCartao: string read FTipoCartao write FTipoCartao;
+    property DataFiscal: String read FDataFiscal write FDataFiscal;
+    property NumeroCupom: string read FNumeroCupom write FNumeroCupom;
+    property DataHoraSITEF: string read FDataHoraSITEF write FDataHoraSITEF;
+    property CodigoResposta: string read FCodigoResposta write FCodigoResposta;
+    property NomeDaInstituicao: string read FNomeDaInstituicao write FNomeDaInstituicao;
+    property Nome_Titular: string read FNome_Titular write FNome_Titular;
+    property Mensagem: string read FMensagem write FMensagem;
+    property ViaCliente: string read FViaCliente;
+    property ViaEstabelecimento: string read FViaEstabelecimento;
+
+  end;
+
+  TNotifyRotinaColeta = reference to procedure(AComando: integer; ABuffer: string);
+  TNotifyRotinaResultado = reference to procedure(ACampo: integer; ABuffer: string);
+
+  TNotifyResultadoTEF = reference to procedure(AClisitefRespostaTransacao: TClisitefRespostaTransacao);
+
+  TCliSItef = class
+  strict private
+    FCliSItef: TCLiSitefI;
+    FSTS: integer;
+    FRodando: boolean;
+    FRotinaColeta: TNotifyRotinaColeta;
+    FRotinaResultado: TNotifyRotinaResultado;
+    FValorTransacao: Extended;
+    FQtdParcelas: integer;
+    FSitefConectado: boolean;
+    FSelecionaFormaPagamento: boolean;
+    FClisitefRespostaTransacao: TClisitefRespostaTransacao;
+    FResultadoTEF: TNotifyResultadoTEF;
+    FCodigoLoja: string;
+    FNumeroTerminal: string;
+    FParametrosAdicionais: string;
+    FEnderecoIPSitef: string;
+    FPortaSITEF: integer;
+
+    procedure HandleMessage(Value: integer);
+    procedure RotinaColeta(comando: integer);
+    procedure RotinaResultado(campo: integer);
+
+    function MensagemCodigoResposta(Value: string): string;
+    function GetMensagemResposta: string;
+    function GetValorTransacao(): string;
+  private
+    function GetCodigoLoja: string;
+    function GetEnderecoIPSitef: string;
+    function GetNumeroTerminal: string;
+    function GetParametrosAdicionais: string;
+  public
+    property sts: integer read FSTS;
+    property MensagemResposta: string read GetMensagemResposta;
+
+    property onRotinaColeta: TNotifyRotinaColeta read FRotinaColeta write FRotinaColeta;
+    property onRotinaResultado: TNotifyRotinaResultado read FRotinaResultado write FRotinaResultado;
+
+    property OnResultadoTEF: TNotifyResultadoTEF read FResultadoTEF write FResultadoTEF;
+
+    property ValorTransacao: Extended read FValorTransacao write FValorTransacao;
+
+    property QtdParcelas: integer read FQtdParcelas write FQtdParcelas;
+
+    property Conectado: boolean read FSitefConectado;
+
+    property RespostaTransacao: TClisitefRespostaTransacao read FClisitefRespostaTransacao;
+    property CodigoLoja: string read GetCodigoLoja write FCodigoLoja;
+    property NumeroTerminal: string read GetNumeroTerminal write FNumeroTerminal;
+    property ParametrosAdicionais: string read GetParametrosAdicionais write FParametrosAdicionais;
+    property EnderecoIPSitef: string read GetEnderecoIPSitef write FEnderecoIPSitef;
+    property PortaSitef: integer read FPortaSITEF write FPortaSITEF;
+
+    procedure transaciona(AFuncao: integer; ANumeroCupomFiscal: string; ANumeroTerminal: string = ''; ARestricoes: string = '');
+
+    function BluetoothPareado(): boolean;
+
+  end;
+
+implementation
+
+{ TCliSItef }
+
+function TCliSItef.BluetoothPareado: boolean;
+var
+  lInformacoesPinpad: TInformacoesPinpad;
+begin
+  lInformacoesPinpad := TInformacoesPinpad.Create();
+  result := lInformacoesPinpad.localizado;
+end;
+
+function TCliSItef.GetCodigoLoja: string;
+begin
+  result := FCodigoLoja;
+end;
+
+function TCliSItef.GetEnderecoIPSitef: string;
+begin
+  result := FEnderecoIPSitef;
+end;
+
+function TCliSItef.GetMensagemResposta: string;
+begin
+  result := MensagemCodigoResposta(FSTS.ToString);
+end;
+
+function TCliSItef.GetNumeroTerminal: string;
+begin
+  result := FNumeroTerminal;
+end;
+
+function TCliSItef.GetParametrosAdicionais: string;
+begin
+  result := FParametrosAdicionais;
+end;
+
+function TCliSItef.GetValorTransacao: string;
+begin
+  result := FValorTransacao.ToString;
+  result := StringReplace(result, '.', '', [rfReplaceAll]);
+  result := StringReplace(result, ',', '', [rfReplaceAll]);
+end;
+
+procedure TCliSItef.HandleMessage(Value: integer);
+begin
+  if (Value = CMD_RETORNO_VALOR) then
+    RotinaResultado(getTipoCampo)
+  else
+    RotinaColeta(Value);
+end;
+
+function TCliSItef.MensagemCodigoResposta(Value: string): string;
+begin
+  if Value = '00' then
+    result := 'Transação autorizada'
+  else if Value = '-1' then
+    result := 'Módulo não inicializado.'
+  else if Value = '-2' then
+    result := 'Operação cancelada pelo operador.'
+  else if Value = '-3' then
+    result := 'O parâmetro função / modalidade é inexistente/inválido.'
+  else if Value = '-4' then
+    result := 'Falta de memória no PDV.'
+  else if Value = '-5' then
+    result := 'Sem comunicação com o SiTef.'
+  else if Value = '-6' then
+    result := 'Operação cancelada pelo usuário no pinpad.'
+  else if Value = '-7' then
+    result := 'Reservado'
+  else if Value = '-8' then
+    result := 'A CliSiTef não possui a implementação da função necessária, provavelmente está desatualizada (a CliSiTefI é mais recente).'
+  else if Value = '-9' then
+    result := 'A automação chamou a rotina ContinuaFuncaoSiTefInterativo sem antes iniciar uma função iterativa.'
+  else if Value = '-10' then
+    result := 'Algum parâmetro obrigatório não foi passado pela automação comercial.'
+  else if Value = '-12' then
+    result := 'Erro na execução da rotina iterativa. Provavelmente o processo iterativo anterior não foi executado até o final (enquanto o retorno for igual a 10000).'
+  else if Value = '-13' then
+    result := 'Documento fiscal não encontrado nos registros da CliSiTef. Retornado em funções de consulta tais como ObtemQuantidadeTransaçõesPendentes.'
+  else if Value = '-15' then
+    result := 'Operação cancelada pela automação comercial.'
+  else if Value = '-20' then
+    result := 'Parâmetro inválido passado para a função.'
+  else if Value = '-21' then
+    result := 'Utilizada uma palavra proibida, por exemplo SENHA, para coletar dados em aberto no pinpad. Por exemplo na função ObtemDadoPinpadDiretoEx.'
+  else if Value = '-25' then
+    result := 'Erro no Correspondente Bancário: Deve realizar sangria.'
+  else if Value = '-28' then
+    result := 'Excede o número de parcelas'
+  else if Value = '-30' then
+    result := 'Erro de acesso ao arquivo. Certifique-se que o usuário que roda a aplicação tem direitos de leitura/escrita.'
+  else if Value = '-40' then
+    result := 'Transação negada pelo servidor SiTef.'
+  else if Value = '-41' then
+    result := 'Dados inválidos.'
+  else if Value = '-42' then
+    result := 'Reservado'
+  else if Value = '-43' then
+    result := 'Erro pinpad.'
+  else if Value = '-50' then
+    result := 'Transação não segura.'
+  else if Value = '-100' then
+    result := 'Erro interno do módulo.'
+  else
+    result := 'Transação não autorizada'
+end;
+
+procedure TCliSItef.RotinaColeta(comando: integer);
+var
+  lBuffer: string;
+begin
+  lBuffer := getBuffer;
+
+  case comando of
+    CMD_NUMERIO_PARCELAS:
+      begin
+        setBuffer(FQtdParcelas.ToString);
+      end;
+    CMD_GET_MENU_OPTION:
+      begin
+        if FSelecionaFormaPagamento then
+        begin
+          if FQtdParcelas > 1 then
+            setBuffer('2')
+          else
+            setBuffer('1');
+        end;
+      end;
+
+    CMD_OBTEM_VALOR:
+      begin
+        setBuffer(GetValorTransacao());
+      end;
+    CMD_MENSAGEM_OPERADOR, CMD_MENSAGEM_CLIENTE, CMD_MENSAGEM:
+      begin
+        if (getBuffer = TXT_SITEF_CONECTADO) then
+          FSitefConectado := true;
+      end;
+
+    CMD_TITULO_MENU, CMD_EXIBE_CABECALHO:
+      begin
+        FSelecionaFormaPagamento := (lBuffer = 'Selecione a forma de pagamento');
+      end;
+
+    19, CMD_CONFIRMA_CANCELA:
+      setBuffer('0');
+  end;
+
+  if Assigned(FRotinaColeta) then
+    FRotinaColeta(comando, lBuffer);
+end;
+
+procedure TCliSItef.RotinaResultado(campo: integer);
+var
+  lBuffer: string;
+begin
+  lBuffer := getBuffer;
+  case campo of
+    CAMPO_COMPROVANTE_CLIENTE:
+      begin
+        // var
+        // lImprime: TImprime;
+        // lImprime := TImprime.Create();
+        // lImprime.salvacupom(lBuffer, [], [], true);
+      end;
+    CAMPO_COMPROVANTE_ESTAB:
+      begin
+        // var
+        // lImprime: TImprime;
+        // lImprime := TImprime.Create();
+        // lImprime.salvacupom(lBuffer, [], [], false);
+      end;
+    CAMPO_SERIE_PINPAD:
+      begin
+        FClisitefRespostaTransacao.NumeroSeriePinpad := lBuffer;
+      end;
+    CAMPO_NSU_SITEF:
+      FClisitefRespostaTransacao.NsuSitef := lBuffer;
+    CAMPO_NSU_HOST:
+      FClisitefRespostaTransacao.NsuHost := lBuffer;
+    CAMPO_CODIGO_AUTORIZACAO:
+      FClisitefRespostaTransacao.CodigoAutorizacao := lBuffer;
+    CAMPO_BIN:
+      FClisitefRespostaTransacao.NumeroBinCartao := lBuffer;
+    CAMPO_EMBOSO:
+      FClisitefRespostaTransacao.NumeroEmbosoCartao := lBuffer;
+    CAMPO_CODIGO_REDE:
+      FClisitefRespostaTransacao.CodigoAdquirente := lBuffer;
+    CAMPO_CODIGO_BANDEIRA:
+      FClisitefRespostaTransacao.CodigoBandeira := lBuffer;
+    CAMPO_TIPO_CARTAO_LIDO:
+      FClisitefRespostaTransacao.TipoCartao := lBuffer;
+    CAMPO_DATA_FISCAL:
+      FClisitefRespostaTransacao.DataFiscal := lBuffer;
+    CAMPO_NUMERO_CUPOM:
+      FClisitefRespostaTransacao.NumeroCupom := lBuffer;
+    CAMPO_DATA_HORA_SITEF:
+      FClisitefRespostaTransacao.DataHoraSITEF := lBuffer;
+    CAMPO_CODIGO_RESPOSTA_AUTORIZADOR:
+      begin
+        FClisitefRespostaTransacao.CodigoResposta := lBuffer;
+        FClisitefRespostaTransacao.Mensagem := MensagemCodigoResposta(FClisitefRespostaTransacao.CodigoResposta);
+      end;
+    CAMPO_NOME_DA_INSTITUICAO:
+      FClisitefRespostaTransacao.NomeDaInstituicao := lBuffer;
+    CAMPO_NOME_TITULAR:
+      FClisitefRespostaTransacao.Nome_Titular := lBuffer;
+  end;
+
+  if Assigned(FRotinaResultado) then
+    FRotinaResultado(campo, lBuffer);
+end;
+
+procedure TCliSItef.transaciona(AFuncao: integer; ANumeroCupomFiscal, ANumeroTerminal, ARestricoes: string);
+var
+  lHora: string;
+  lData: string;
+  lDtm: tdatetime;
+  lFuncao: integer;
+  lCupomFiscal: integer;
+  lProximoComando: integer;
+begin
+  lDtm := now;
+  lHora := FormatDateTime('hhmmss', lDtm);
+  lData := FormatDateTime('yyyyMMdd', lDtm);
+
+  tthread.CreateAnonymousThread(
+    procedure
+    begin
+      try
+        try
+
+          TLog.I('Inicializando');
+
+          setDebug(true);
+          setActivity(MainActivity);
+
+          TLog.I('Configurando');
+
+          if EnderecoIPSitef.Trim = EmptyStr then
+            raise Exception.Create('Endereco do sitef deve ser informado');
+
+          FSTS := configuraIntSiTefInterativoEx(EnderecoIPSitef, CodigoLoja, NumeroTerminal, ParametrosAdicionais);
+
+          TLog.I('configuraIntSiTefInterativoEx STS=' + FSTS.ToString);
+
+          FRodando := true;
+
+          FSTS := iniciaFuncaoSiTefInterativo(lFuncao, GetValorTransacao(), lCupomFiscal.ToString, lData, lHora, ANumeroTerminal, ARestricoes);
+
+          TLog.I('iniciaFuncaoSiTefInterativo STS=' + FSTS.ToString);
+
+          FClisitefRespostaTransacao.CodigoResposta := FSTS.ToString;
+          FClisitefRespostaTransacao.Mensagem := MensagemCodigoResposta(FClisitefRespostaTransacao.CodigoResposta);
+
+          while FSTS = CONTINUA_SITEF do
+          begin
+            FSTS := continuaFuncaoSiTefInterativo;
+
+            TLog.I('continuaFuncaoSiTefInterativo inicia STS=' + FSTS.ToString);
+
+            if (FSTS <> CONTINUA_SITEF) then
+              break;
+
+            lProximoComando := getProximoComando;
+            HandleMessage(lProximoComando);
+          end;
+
+          if FSTS = 0 then
+          begin
+            FSTS := finalizaTransacaoSiTefInterativoEx(1, lCupomFiscal.ToString, lData, lHora, '');
+
+            TLog.I('finalizaTransacaoSiTefInterativoEx STS=' + FSTS.ToString);
+
+            while FSTS = CONTINUA_SITEF do
+            begin
+              FSTS := continuaFuncaoSiTefInterativo;
+              TLog.I('continuaFuncaoSiTefInterativo Finaliza STS=' + FSTS.ToString);
+
+              if (FSTS <> CONTINUA_SITEF) then
+                break;
+
+              lProximoComando := getProximoComando;
+              HandleMessage(lProximoComando);
+            end;
+          end
+          else
+            FClisitefRespostaTransacao.CodigoResposta := FSTS.ToString;
+
+          TLog.I('Finaliza Transacao STS=' + FSTS.ToString);
+
+          FRodando := false;
+          FSitefConectado := false;
+
+        except
+          on E: Exception do
+          begin
+            TLog.E(E.Message);
+            FClisitefRespostaTransacao.Mensagem := E.Message;
+          end;
+        end;
+      finally
+        if Assigned(FResultadoTEF) then
+          FResultadoTEF(FClisitefRespostaTransacao);
+
+        tthread.Current.Terminate;
+      end;
+    end).Start;
+end;
+
+end.

@@ -1,0 +1,20 @@
+program nghc;
+
+uses
+  System.StartUpCopy,
+  FMX.Forms,
+  nghc.funcoescomuns in 'nghc.funcoescomuns.pas',
+  nghc.Log in 'nghc.Log.pas',
+  nghc.pos in 'nghc.pos.pas' {Form1},
+  sitef.clisitef in 'sitef.clisitef.pas',
+  sitef.clisitefi in 'sitef.clisitefi.pas',
+  sitef.constants in 'sitef.constants.pas';
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TForm1, Form1);
+  Application.Run;
+end.
