@@ -21,6 +21,8 @@ uses
 
   sitef.constants,
 
+  G720Printer,
+
   nghc.Log,
   nghc.CliSitef,
   nghc.funcoescomuns;
@@ -134,6 +136,8 @@ begin
     if lValorTransacao > 0 then
       lValorTransacao := lValorTransacao / 100;
 
+    TFuncoesComuns.AndroidBeep(1);
+
     tthread.Synchronize(nil,
       procedure
       begin
@@ -154,6 +158,8 @@ procedure TfrmPrincipal.btnTransaciona(Sender: TObject; const Point: TPointF);
 var
   lCliSitef: TCliSItef;
 begin
+
+  TFuncoesComuns.AndroidBeep(2);
 
   try
     lCliSitef := TCliSItef.Create;
@@ -208,9 +214,22 @@ begin
 
   if AClisitefRespostaTransacao.CodigoResposta = TRANSACAO_AUTORIZADA then
   begin
+    TFuncoesComuns.AndroidBeep(3);
+
+    GertecPrinter.PrintString(AClisitefRespostaTransacao.ViaCliente);
+    GertecPrinter.PrintString(AClisitefRespostaTransacao.ViaEstabelecimento);
+    GertecPrinter.printOutput;
 
   end;
 
+  Sleep(100);
+
+  var
+    lPoint: TPointF;
+
+  btnLimpa(Self, lPoint);
+
+  MostraMensagemTEF('Digite o valor e pressione Enter');
 
 end;
 

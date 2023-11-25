@@ -167,7 +167,7 @@ begin
     lCliSitef.QtdParcelas := 1;
     lCliSitef.CodigoLoja := '00000000';
     lCliSitef.NumeroTerminal := 'SE000001';
-    lCliSitef.EnderecoIPSitef := '192.168.3.100';
+    lCliSitef.EnderecoIPSitef := '179.217.12.2';
     lCliSitef.PortaSitef := 4096;
     lCliSitef.onRotinaColeta := RotinaColeta;
     lCliSitef.onRotinaResultado := RotinaResultado;
